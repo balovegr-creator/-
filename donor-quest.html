@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Путешествие донора</title>
+
+<style>
+:root{--bg:#1c2a2e;--panel:#263a40;--line:#3a525a;--ink:#f1efe6;--mute:#a9bcb8;--red:#d6213a;--gold:#f2a33a;--ok:#7fd49a;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Rubik,system-ui,sans-serif}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+main{max-width:none;margin:0 auto;padding:10px 16px}
+h1{font-size:20px;margin:4px 0 10px;font-weight:700;text-align:center}
+#hud{width:min(100%,calc((100vh - 190px) * 1.545));min-width:300px;margin:0 auto;align-items:center;flex-wrap:wrap;display:flex;justify-content:space-between;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:16px}
+#stage{position:relative;margin:10px auto 0;width:min(100%,calc((100vh - 190px) * 1.545));min-width:300px}
+#hud button{padding:3px 10px;font-size:14px}
+#ov{background-image:radial-gradient(circle at 12% 8%,rgba(214,33,58,.28),transparent 45%),radial-gradient(circle at 92% 98%,rgba(242,163,58,.2),transparent 42%);align-items:center;text-align:center}
+#ov h2{font-size:26px;margin:0}
+#ov p{margin:6px auto 10px}
+#ov .go{align-self:center}
+canvas{display:block;width:100%;height:auto;border-radius:10px;border:1px solid var(--line);background:#c6d3b5}
+#toast{position:absolute;left:50%;top:10px;transform:translateX(-50%);background:rgba(28,42,46,.92);padding:6px 12px;border-radius:8px;font-size:14px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%;text-align:center}
+#toast.on{opacity:1}
+#dlg,#ov{position:absolute;left:0;right:0;background:rgba(28,42,46,.97);border:1px solid var(--line);border-radius:10px;padding:14px;margin:8px}
+#dlg{bottom:0}
+#ov{top:0;bottom:0;display:flex;flex-direction:column;justify-content:center;gap:10px;margin:0}
+#dlg p,#ov p{margin:6px 0 10px;line-height:1.45;max-width:60ch}
+#dlg b{color:var(--gold)}
+button{font:inherit;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:9px 12px;text-align:left;cursor:pointer}
+button:hover:not(:disabled){border-color:var(--gold)}
+button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+#dlg button{display:block;width:100%;margin-bottom:6px}
+button.good{border-color:var(--ok);background:#25473a}
+button.bad{border-color:var(--red);opacity:.6}
+.go{background:var(--red);border:1px solid var(--red);border-radius:8px;color:var(--ink);font-weight:700;text-align:center;align-self:flex-start;padding:10px 20px;text-decoration:none;cursor:pointer;font-size:16px}
+a.go{background:#0077ff;border-color:#0077ff}
+#fb{margin:4px 0 8px;line-height:1.4;color:var(--mute)}
+#pad{display:none;grid-template-columns:repeat(3,64px);grid-template-rows:repeat(2,56px);gap:6px;justify-content:center;margin-top:12px}
+#pad button{text-align:center;font-size:20px;padding:0}
+#pad button:nth-child(1){grid-area:1/2}#pad button:nth-child(2){grid-area:2/1}#pad button:nth-child(3){grid-area:2/2}#pad button:nth-child(4){grid-area:2/3}
+button{touch-action:manipulation}
+@media (pointer:coarse){#pad{display:grid}}
+small{display:block;margin-top:12px;color:var(--mute);line-height:1.4}
+@keyframes sh{0%,100%{transform:translateX(0)}20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+#stage.shake{animation:sh .3s}
+#stage.shake canvas{border-color:var(--red)}
+@media (prefers-reduced-motion:reduce){#stage.shake{animation:none}#toast{transition:none}}
+@media (max-width:700px){
+h1{font-size:17px;margin:2px 0 8px}
+#hud{font-size:14px;padding:6px 10px}
+#dlg{position:fixed;left:0;right:0;bottom:0;margin:0;border-radius:14px 14px 0 0;max-height:78vh;overflow-y:auto;padding:14px 14px calc(14px + env(safe-area-inset-bottom,0px));z-index:5;font-size:15px}
+#ov{position:fixed;inset:0;margin:0;border-radius:0;overflow-y:auto;z-index:6;padding:calc(20px + env(safe-area-inset-top,0px)) 18px 20px;justify-content:flex-start}
+}
+</style>
+</head>
+<body>
+<main>
+<h1>Путешествие донора</h1>
+<div id="hud"><span id="lv"></span><span id="pr"></span><span><button id="snd">🔊 Звук</button> <button id="fs">⛶ На весь экран</button></span></div>
+<div id="stage">
+<canvas id="cv" width="1360" height="880" aria-label="Игровое поле"></canvas>
+<div id="toast"></div>
+<div id="dlg" hidden></div>
+<div id="ov"></div>
+</div>
+<div id="pad"><button class="u" data-d="0,-1">▲</button><button data-d="-1,0">◀</button><button data-d="0,1">▼</button><button data-d="1,0">▶</button></div>
+<small>Игра учебная. Точные правила допуска к донации уточняйте на станции переливания крови или у врача.</small>
+</main>
+<script>
+const R=["TTTTTTTTTTTTTTTTT","T.....T.....BBBBT","T..HH.......BBBBT","T..HH..T.....D..T","T......T....T...T","T..T.......HH...T","T..........HH...T","T..HH...T.......T","T..HH.........T.T","T...............T","TTTTTTTTTTTTTTTTT"];
+const S=40,TOTAL=5;
+const solid=(x,y)=>{const c=(R[y]||"")[x];return !c||"THB".includes(c)};
+const NPCS=[
+{n:"Артём, студент",x:5,y:1,c:"#4aa3c7",q:"Слушай, я всё думаю про донорство, но мне страшновато. Говорят, это больно и вредно для здоровья. Это правда?",a:[
+["Больно только в момент укола, как при обычном анализе. Потом организм спокойно восстанавливается.",1,"Жидкая часть крови восстанавливается за день-два, клетки — за несколько недель, поэтому между донациями нужен перерыв."],
+["Говорят, что после сдачи слабость держится целый месяц.",0,"Нет. При хорошем самочувствии перед сдачей слабость, если и бывает, проходит быстро после отдыха, воды и еды."],
+["Это опасно, поэтому сдать кровь можно только один раз в жизни.",0,"Нет. Донором можно быть регулярно, соблюдая перерывы между донациями. Сроки назовут на станции."]]},
+{n:"Лена, курьер",x:9,y:4,c:"#e0a458",q:"С утра чихаю и нос заложен, но чувствую себя нормально. Может, схожу на станцию сегодня?",a:[
+["Лучше подождать, пока вы полностью выздоровеете. Сдавать кровь нужно здоровым.",1,"Донорство должно быть безопасным и для вас, и для того, кому поможет ваша кровь. Врач в любом случае спросит о самочувствии."],
+["Можно, лёгкая простуда не помеха.",0,"Помеха: при простуде сдавать кровь нельзя, даже если самочувствие кажется терпимым."],
+["Можно, если выпить таблетку и сбить симптомы.",0,"Таблетка лишь скроет симптомы, а болезнь останется. Нужно дождаться выздоровления."]]},
+{n:"Гена, повар",x:14,y:5,c:"#9b7fd1",q:"Я бы сходил, но боюсь заразиться через иглу. Вдруг она не стерильная?",a:[
+["Не переживайте: иглы и системы одноразовые, их вскрывают прямо при вас.",1,"Всё, что касается крови, используется один раз и затем утилизируется."],
+["Да, но риск небольшой, так что не страшно.",0,"Риска заражения при сдаче нет: инструменты одноразовые."],
+["Станции используют иглы по нескольку раз.",0,"Это не так. Повторное использование игл запрещено."]]},
+{n:"Нина Петровна",x:6,y:8,c:"#6fbf8e",q:"Наконец решилась и хочу сходить завтра. Что мне взять с собой и как подготовиться?",a:[
+["Взять паспорт, выспаться, лёгко позавтракать и пить воду. Накануне лучше обойтись без жирного.",1,"Хороший сон, питьё и лёгкая еда помогают чувствовать себя хорошо во время и после сдачи."],
+["Ничего не нужно: можно прийти натощак и без документов.",0,"Нужен паспорт, а голодным приходить не стоит."],
+["Выпить побольше энергетиков для бодрости.",0,"Лучше вода, чай и нормальный сон. Энергетики не помогут."]]},
+{n:"Лёша, школьник",x:10,y:7,c:"#e46b7a",q:"Мне только 17, но я здоровый и спортивный. Можно мне сдать кровь?",a:[
+["Пока нет: донором становятся с 18 лет. Но уже сейчас можно рассказывать о донорстве друзьям и родным.",1,"Рассказывать о донорстве и приходить на акции в поддержку тоже важно. А в 18 лет можно стать донором."],
+["Можно, если родители разрешат.",0,"Нет. Возраст установлен законом, разрешение родителей его не заменяет."],
+["Можно в любом возрасте, если хороший вес.",0,"Нет, вес не заменяет возраст."]]}
+];
+const $=s=>document.querySelector(s),cv=$("#cv"),g=cv.getContext("2d");
+const dlg=$("#dlg"),ov=$("#ov"),toastEl=$("#toast");
+g.scale(2,2);
+let st,tt;
+const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+let AC,master,muted=false,mt,ms=0,sw=0;
+function ac(){if(!AC){const C=window.AudioContext||window.webkitAudioContext;if(!C)return null;AC=new C();master=AC.createGain();master.gain.value=muted?0:1;master.connect(AC.destination)}if(AC.state==="suspended")AC.resume();return AC}
+function tone(f,d,ty,v,at,to){const a=ac();if(!a)return;const t=a.currentTime+(at||0),o=a.createOscillator(),n=a.createGain();o.type=ty||"square";o.frequency.setValueAtTime(f,t);if(to)o.frequency.exponentialRampToValueAtTime(to,t+d);n.gain.setValueAtTime(v||.08,t);n.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(n);n.connect(master);o.start(t);o.stop(t+d+.05)}
+const sfx={
+ step:()=>tone((sw^=1)?110:95,.07,"triangle",.09),
+ tea:()=>{tone(660,.1,"sine",.12);tone(990,.18,"sine",.12,.09)},
+ talk:()=>[0,1,2,3].forEach(i=>tone(320+Math.random()*220,.06,"square",.05,i*.07)),
+ good:()=>{tone(523,.12,"sine",.12);tone(784,.2,"sine",.12,.1)},
+ hurt:()=>tone(220,.25,"sawtooth",.08,0,80),
+ knock:()=>{tone(150,.06,"square",.1);tone(150,.06,"square",.1,.12)},
+ door:()=>tone(140,.45,"sawtooth",.06,0,300),
+ win:()=>[523,659,784,1047,1319].forEach((f,i)=>tone(f,.35,"triangle",.12,i*.14)),
+ lose:()=>[392,330,262,196].forEach((f,i)=>tone(f,.35,"sawtooth",.07,i*.22))
+};
+const MEL=[523,0,659,0,784,0,659,0,587,0,523,0,440,0,392,0,440,0,523,0,587,0,523,0,392,0,0,0,0,0,0,0];
+const BAS=Array(32).fill(0);BAS[0]=131;BAS[8]=98;BAS[16]=110;BAS[24]=87;
+function stopMusic(){clearInterval(mt)}
+function startMusic(){stopMusic();ac();ms=0;mt=setInterval(()=>{const i=ms++%32;if(MEL[i])tone(MEL[i],.5,"triangle",.04);if(BAS[i])tone(BAS[i],1.1,"sine",.07)},280)}
+const POS=[[5,1],[9,4],[14,5],[6,8],[10,7]];
+const EXTRA=[
+{n:`Ольга, бухгалтер`,q:`Я сдавала кровь месяц назад и чувствую себя отлично. Можно уже сдать снова?`,a:[
+[`Рано: между сдачами цельной крови нужен перерыв, обычно не меньше двух месяцев. Точный срок назовут на станции.`,1,`Организму нужно время, чтобы восстановить клетки крови, поэтому донорам назначают паузы.`],
+[`Можно, хоть каждую неделю.`,0,`Нет, частые сдачи истощают организм, поэтому перерывы обязательны.`],
+[`Можно, если хорошее самочувствие.`,0,`Самочувствие не заменяет перерыв: клеткам крови нужно время на восстановление.`]],
+L:{s:`#f0c9a6`,h:`#5b3a2a`,t:`#8a5aa8`,p:`#3b3b4f`,dress:1,bun:1,gl:1}},
+{n:`Маша, первокурсница`,q:`Я вешу 46 кг, но очень хочу помогать людям. Можно мне стать донором?`,a:[
+[`Пока нет: для донора нужен вес не менее 50 кг. Зато можно привести на станцию друзей.`,1,`Минимальный вес нужен для безопасности самого донора: при малом весе труднее переносить потерю крови.`],
+[`Можно, если хорошо питаться неделю.`,0,`Питание не заменит минимальный вес. Требование одинаково для всех.`],
+[`Вес не имеет значения.`,0,`Имеет: от него зависит, безопасно ли вам сдавать кровь.`]],
+L:{s:`#f4d3b5`,h:`#2f1f14`,t:`#e86f9a`,p:`#3a4a6a`,long:1,bag:`#6aa0d8`}},
+{n:`Влад, дизайнер`,q:`Месяц назад я сделал татуировку. Можно мне на станцию?`,a:[
+[`Нужно подождать: после татуировки или пирсинга обычно нужен перерыв около года. Срок уточните у врача.`,1,`Кожа заживает быстрее, чем проходит срок, в который возможную инфекцию ещё нельзя обнаружить.`],
+[`Можно, если татуировка зажила.`,0,`Заживление кожи не гарантирует безопасность крови.`],
+[`Можно в любой день.`,0,`Нет, после татуировок и пирсинга предусмотрен перерыв.`]],
+L:{s:`#ecc4a0`,h:`#c04a2a`,t:`#2a2a2a`,p:`#4a5a3a`,gl:1}},
+{n:`Кирилл, программист`,q:`Я сдал кровь утром. Можно сразу ехать на тренировку?`,a:[
+[`Лучше отдохнуть: пить больше жидкости, нормально поесть и в этот день не нагружать себя.`,1,`После донации организму нужен покой. Тяжёлые нагрузки в этот день лучше отложить.`],
+[`Да, чем активнее, тем быстрее восстановишься.`,0,`Нет, после сдачи крови нагрузки лучше отложить.`],
+[`Ничего не нужно, живи как обычно.`,0,`Вода, еда и отдых в этот день помогают чувствовать себя хорошо.`]],
+L:{s:`#ecc4a0`,h:`#1e1610`,t:`#2d6a4f`,p:`#2a2a32`,gl:1,bag:`#444`}},
+{n:`Галина Ивановна, учительница`,q:`А кому вообще нужна донорская кровь? Это ведь только при авариях?`,a:[
+[`Не только: она нужна при операциях, лечении онкологии, болезнях крови и родах.`,1,`Донорская кровь и её компоненты спасают жизнь в самых разных ситуациях, а полной замены пока нет.`],
+[`Только при авариях.`,0,`Нет, это лишь одна из причин.`],
+[`Её можно легко заменить лекарствами.`,0,`Полной замены донорской крови пока не существует.`]],
+L:{s:`#efcba8`,h:`#8a5a3a`,t:`#b5503c`,p:`#3a3a4a`,dress:1,bun:1,gl:1}},
+{n:`Семён, электрик`,q:`Я пью антибиотики от ангины, но мне уже лучше. Можно сдать кровь?`,a:[
+[`Пока нет: нужно полностью вылечиться и закончить курс. Затем нужна пауза, срок скажет врач.`,1,`Болезнь и лекарства влияют на кровь, поэтому врач допускает к сдаче только здоровых.`],
+[`Можно, если чувствую себя хорошо.`,0,`Самочувствие обманчиво: сначала нужно закончить лечение.`],
+[`Можно, если выпить таблетку после сдачи.`,0,`Это не решает проблему: лекарство уже было в крови.`]],
+L:{s:`#e3b48a`,h:`#4a3a2a`,t:`#d0722a`,p:`#3a4a6a`,mus:1,hat:`cap`,hc:`#f2c230`}}
+];
+function pickNpcs(){
+ const pool=[...NPCS.map((n,i)=>({...n,L:LOOKS[i]})),...EXTRA],P=shuffle(POS);
+ return shuffle(pool).slice(0,TOTAL).map((n,i)=>({...n,x:P[i][0],y:P[i][1],vx:P[i][0],vy:P[i][1],ok:false}));
+}
+let fx=[];
+const LV=Array.from({length:14},(_,i)=>({x:Math.random()*680,y:Math.random()*440,s:3+Math.random()*3,v:.25+Math.random()*.35,p:Math.random()*6}));
+function burst(px,py,k,n){for(let i=0;i<n;i++)fx.push({x:px*S+20,y:py*S+16,vx:(Math.random()-.5)*3,vy:-1-Math.random()*2.2,g:k=='dust'?.02:.06,l:40+Math.random()*20,m:60,k})}
+function shakeIt(){const s=$('#stage');s.classList.remove('shake');void s.offsetWidth;s.classList.add('shake')}
+function drawFx(t){
+ g.save();g.globalAlpha=.55;g.fillStyle='#d8761e';
+ LV.forEach(o=>{o.y+=o.v;o.x+=Math.sin(t/900+o.p)*.5+.2;if(o.y>450){o.y=-8;o.x=Math.random()*680}if(o.x>690)o.x=-8;g.beginPath();g.ellipse(o.x,o.y,o.s,o.s*.55,t/700+o.p,0,7);g.fill()});
+ g.restore();
+ g.fillStyle='#d6213a';g.font='12px sans-serif';
+ st.fol.forEach(f=>g.fillText('♥',f.vx*S+20,f.vy*S-14+Math.sin(t/300+f.x)*2));
+ fx=fx.filter(p=>p.l>0);
+ fx.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=p.g;p.l--;g.globalAlpha=Math.max(0,p.l/p.m);
+  if(p.k=='heart'){g.fillStyle='#d6213a';g.font='16px sans-serif';g.fillText('❤',p.x,p.y)}
+  else{g.fillStyle=p.k=='dust'?'#8a7a60':'#f2a33a';g.beginPath();g.arc(p.x,p.y,p.k=='dust'?2.5:3,0,7);g.fill()}});
+ g.globalAlpha=1;
+}
+function vkUrl(win){return 'https://vk.com/share.php?url='+encodeURIComponent(location.href.split('#')[0])+'&title='+encodeURIComponent('Путешествие донора')+'&comment='+encodeURIComponent(win?'Я прошёл игру «Путешествие донора» и развеял мифы о донорстве крови. Попробуй и ты!':'Проверь, знаешь ли ты правду о донорстве крови: игра «Путешествие донора».')}
+function init(){
+ st={x:1,y:9,vx:1,vy:9,lives:5,mode:"play",inv:0,trail:[],fol:[],
+  npcs:pickNpcs(),
+  foes:[[7,2],[8,6],[15,8]].map(([x,y])=>({x,y,vx:x,vy:y})),
+  items:[[2,4],[15,4],[8,9]].map(([x,y])=>({x,y}))};
+ dlg.hidden=true;ov.hidden=true;fx=[];hud();startMusic();
+}
+function hud(){$("#lv").textContent="Силы: "+"❤".repeat(st.lives)+"♡".repeat(5-st.lives);$("#pr").textContent="Приведено: "+st.fol.length+" из "+TOTAL}
+function toast(t){toastEl.textContent=t;toastEl.classList.add("on");clearTimeout(tt);tt=setTimeout(()=>toastEl.classList.remove("on"),2200)}
+function hurt(){st.lives--;shakeIt();if(st.lives>0)sfx.hurt();hud();if(st.lives<=0){end(false);return true}return false}
+function hit(){const now=performance.now();if(now>st.inv&&st.foes.some(f=>f.x==st.x&&f.y==st.y)){st.inv=now+1500;toast("Миф сбил вас с толку: −1 силы");hurt()}}
+function move(dx,dy){
+ if(st.mode!=="play")return;
+ const nx=st.x+dx,ny=st.y+dy;
+ if(solid(nx,ny))return;
+ const n=st.npcs.find(n=>!n.ok&&n.x==nx&&n.y==ny);
+ if(n){talk(n);return}
+ st.trail.unshift([st.x,st.y]);st.trail.length=Math.min(st.trail.length,10);
+ st.x=nx;st.y=ny;sfx.step();burst(st.trail[0][0],st.trail[0][1],'dust',2);
+ st.fol.forEach((f,i)=>{const t=st.trail[i];if(t){f.x=t[0];f.y=t[1]}});
+ const k=st.items.findIndex(i=>i.x==nx&&i.y==ny);
+ if(k>=0){if(st.lives<5){st.items.splice(k,1);st.lives++;sfx.tea();burst(nx,ny,'spark',14);hud();toast("Сладкий чай: +1 силы")}else toast("Силы полны, чай подождёт")}
+ if(R[ny][nx]=="D"){if(st.fol.length==TOTAL)end(true);else{sfx.knock();toast("Приведите всех: осталось "+(TOTAL-st.fol.length))}}
+ hit();
+}
+function talk(n){
+ st.mode="talk";sfx.talk();dlg.hidden=false;dlg.innerHTML="";
+ const b=document.createElement("b");b.textContent=n.n;
+ const p=document.createElement("p");p.textContent=n.q;
+ const fb=document.createElement("div");fb.id="fb";
+ dlg.append(b,p);
+ const btns=shuffle(n.a).map(o=>{const x=document.createElement("button");x.textContent=o[0];
+  x.onclick=()=>{
+   if(o[1]){btns.forEach(y=>y.disabled=true);x.classList.add("good");sfx.good();fb.textContent="Верно. "+o[2];
+    const c=document.createElement("button");c.className="go";c.textContent="Продолжить";
+    c.onclick=()=>{n.ok=true;st.fol.push(n);burst(n.x,n.y,'heart',10);dlg.hidden=true;st.mode="play";hud();toast(n.n+" идёт с вами")};
+    dlg.append(c);c.focus()}
+   else{x.disabled=true;x.classList.add("bad");fb.textContent="Не совсем. "+o[2]+" (−1 силы)";if(hurt())dlg.hidden=true}
+  };dlg.append(x);return x});
+ dlg.append(fb);
+}
+function end(win){
+ st.mode="end";stopMusic();if(win){sfx.door();setTimeout(sfx.win,500)}else sfx.lose();ov.hidden=false;ov.innerHTML="";
+ const h=document.createElement("h2"),p=document.createElement("p"),b=document.createElement("button");
+ h.textContent=win?"Станция открыта":"Силы закончились";
+ p.textContent=win?"Вы привели всех пятерых граждан и развеяли для них мифы о донорстве крови. Одна донация может помочь нескольким людям. Спасибо, что стали частью Донорского движения ПетрГУ.":"Мифы оказались настойчивее. Ничего страшного: передохните и попробуйте ещё раз, теперь вы знаете правильные ответы.";
+ b.className="go";b.textContent=win?"Сыграть ещё раз":"Попробовать снова";b.onclick=init;
+ ov.insertAdjacentHTML("beforeend",art(win?"win":"lose"));const v=document.createElement('a');v.className='go';v.textContent='Поделиться во ВКонтакте';v.href=vkUrl(win);v.target='_blank';v.rel='noopener';ov.append(h,p,b,v);
+}
+function art(k){
+ const hc=k=="lose"?"#7a8a90":"#d6213a";
+ const ex=k=="win"?'<g fill="#f2a33a"><circle cx="70" cy="30" r="4"/><circle cx="250" cy="24" r="5"/><circle cx="95" cy="55" r="3"/><circle cx="228" cy="52" r="3.5"/></g><g fill="#7fd49a"><circle cx="48" cy="52" r="3"/><circle cx="276" cy="48" r="3"/><circle cx="110" cy="16" r="2.5"/><circle cx="212" cy="14" r="2.5"/></g>':"";
+ return '<svg viewBox="0 0 320 100" width="260" role="img" aria-label="Сердце с каплей и линия пульса" style="max-width:80%;align-self:center">'+ex+'<polyline points="0,82 100,82 120,82 132,62 146,96 158,72 168,82 320,82" fill="none" stroke="'+hc+'" stroke-width="3" stroke-linejoin="round"/><path d="M160 70C120 45 125 15 145 15C153 15 158 20 160 25C162 20 167 15 175 15C195 15 200 45 160 70Z" fill="'+hc+'"/><path d="M160 24C166 33 169 37 169 42A9 9 0 0 1 151 42C151 37 154 33 160 24Z" fill="#fff"/></svg>'}
+function intro(){
+ st={mode:"intro",lives:5,fol:[],npcs:[],foes:[],items:[],x:1,y:9,vx:1,vy:9,trail:[],inv:0};
+ ov.hidden=false;hud();
+ ov.innerHTML=art("intro")+"<h2>Станция ждёт вас ❤️</h2><p>Вы донор и знаете, как это важно. В Петрозаводске на станции переливания крови осталось совсем мало, а многие горожане сомневаются: боятся, не знают правил или верят слухам. Пройдитесь по городу, поговорите с пятью людьми и помогите им разобраться. Идите на станцию вместе, она в правом верхнем углу.</p><p>Ходить: стрелки или WASD. Чтобы поговорить, подойдите к человеку вплотную. Мифов лучше обходить стороной. Сладкий чай ☕ вернёт силы.</p>";
+ const b=document.createElement("button");b.className="go";b.textContent="Начать";b.onclick=init;ov.append(b);b.focus();
+}
+addEventListener("keydown",e=>{
+ const m={ArrowUp:[0,-1],KeyW:[0,-1],ArrowDown:[0,1],KeyS:[0,1],ArrowLeft:[-1,0],KeyA:[-1,0],ArrowRight:[1,0],KeyD:[1,0]}[e.code];
+ if(m&&st.mode=="play"){e.preventDefault();move(...m)}
+});
+document.querySelectorAll("#pad button").forEach(b=>b.addEventListener("pointerdown",e=>{e.preventDefault();move(...b.dataset.d.split(",").map(Number))}));
+setInterval(()=>{
+ if(st.mode!=="play")return;
+ st.foes.forEach(f=>{
+  for(const [dx,dy] of shuffle([[1,0],[-1,0],[0,1],[0,-1]])){
+   const x=f.x+dx,y=f.y+dy;
+   if(!solid(x,y)&&R[y][x]!="D"&&!st.npcs.some(n=>!n.ok&&n.x==x&&n.y==y)){f.x=x;f.y=y;break}
+  }
+ });
+ hit();
+},520);
+function face(x,y,r,col){g.fillStyle=col;g.beginPath();g.arc(x-r*.35,y-r*.1,r*.13,0,7);g.arc(x+r*.35,y-r*.1,r*.13,0,7);g.fill()}
+const LOOKS=[
+{s:"#e9bd94",h:"#2b2118",t:"#3b86c4",p:"#35455a",bag:"#2a3a4a"},
+{s:"#f3cfae",h:"#7a3b1d",t:"#f08a2c",p:"#33384a",bag:"#e8c34a",long:1,hat:"cap",hc:"#e0803a"},
+{s:"#e7b88e",h:"#3a2a1c",t:"#f4f4ef",p:"#4a4a4a",hat:"chef",mus:1},
+{s:"#efcba8",h:"#c9ccd1",t:"#5c9a72",p:"#6b4f6e",dress:1,bun:1,gl:1},
+{k:.88,s:"#f0c7a0",h:"#8a5a2b",t:"#2e4a8a",p:"#3a3a48",bag:"#d6a02a"}];
+function person(L,x,y){
+ g.save();g.translate(x,y);const k=L.k||1;g.scale(k,k);
+ if(L.bag){g.fillStyle=L.bag;g.fillRect(-13,-5,26,15)}
+ if(!L.dress){g.fillStyle=L.p;g.fillRect(-8,7,7,9);g.fillRect(1,7,7,9)}
+ g.fillStyle=L.t;g.beginPath();g.ellipse(0,2,11,11,0,0,7);g.fill();g.fillRect(-14,-2,5,12);g.fillRect(9,-2,5,12);
+ if(L.dress){g.fillStyle=L.p;g.beginPath();g.moveTo(-11,4);g.lineTo(11,4);g.lineTo(13,17);g.lineTo(-13,17);g.fill()}
+ g.fillStyle=L.s;g.fillRect(-14,8,5,4);g.fillRect(9,8,5,4);
+ g.beginPath();g.arc(0,-11,9,0,7);g.fill();
+ g.fillStyle=L.h;g.beginPath();g.arc(0,-13,9,Math.PI,0);g.fill();
+ if(L.long){g.fillRect(-10,-13,4,12);g.fillRect(6,-13,4,12)}
+ if(L.bun){g.beginPath();g.arc(0,-23,4,0,7);g.fill()}
+ if(L.hat=="chef"){g.fillStyle="#fff";g.fillRect(-8,-23,16,6);g.beginPath();g.arc(-5,-25,5,0,7);g.arc(0,-28,5.5,0,7);g.arc(5,-25,5,0,7);g.fill()}
+ if(L.hat=="cap"){g.fillStyle=L.hc;g.beginPath();g.arc(0,-13,9.5,Math.PI,0);g.fill();g.fillRect(-10,-14,20,3)}
+ g.fillStyle="#1c2a2e";g.beginPath();g.arc(-3.5,-10,1.3,0,7);g.arc(3.5,-10,1.3,0,7);g.fill();
+ g.strokeStyle="#9a4a3a";g.lineWidth=1.2;g.beginPath();g.arc(0,-8,3,.2,2.9);g.stroke();
+ if(L.mus){g.fillStyle=L.h;g.fillRect(-4,-8,8,2)}
+ if(L.gl){g.strokeStyle="#333";g.lineWidth=1;g.strokeRect(-6.5,-12,6,4);g.strokeRect(.5,-12,6,4)}
+ g.lineWidth=1;g.restore();
+}
+function lerp(o){o.vx+=(o.x-o.vx)*.3;o.vy+=(o.y-o.vy)*.3}
+function draw(t){
+ g.clearRect(0,0,680,440);
+ for(let y=0;y<11;y++)for(let x=0;x<17;x++){
+  const c=R[y][x],px=x*S,py=y*S;
+  g.fillStyle=(x+y)%2?"#c6d3b5":"#bfcdae";g.fillRect(px,py,S,S);
+  if(c=="T"){g.fillStyle="#7a4b27";g.fillRect(px+17,py+24,6,12);g.fillStyle="#e0802a";g.beginPath();g.arc(px+20,py+19,16,0,7);g.fill();g.fillStyle="#c4661c";g.beginPath();g.arc(px+15,py+23,7,0,7);g.fill()}
+  if(c=="H"){const roof=R[y-1][x]!="H";g.fillStyle=roof?"#3f5068":"#5d7391";g.fillRect(px,py,S,S);g.strokeStyle="#2c3a4e";g.strokeRect(px+.5,py+.5,S-1,S-1);if(!roof){g.fillStyle="#f2c96b";g.fillRect(px+12,py+10,16,14)}}
+  if(c=="B"){g.fillStyle="#f4f6f2";g.fillRect(px,py,S,S)}
+  if(c=="D"){const on=st.fol.length==TOTAL;g.fillStyle=on?"#f2c96b":"#8a6a45";g.fillRect(px+6,py,S-12,S);if(on){g.globalAlpha=.3+.2*Math.sin(t/200);g.fillStyle="#fff";g.fillRect(px,py,S,S);g.globalAlpha=1}}
+ }
+ g.strokeStyle="#9fb0a8";g.strokeRect(12*S+.5,S+.5,4*S-1,2*S-1);
+ g.fillStyle="#d6213a";g.fillRect(14*S-7,2*S-22,14,44);g.fillRect(14*S-22,2*S-7,44,14);
+ g.font="22px sans-serif";g.textAlign="center";g.textBaseline="middle";
+ st.items.forEach(i=>g.fillText("☕",i.x*S+20,i.y*S+21));
+ st.npcs.forEach((n,ni)=>{
+  lerp(n);const x=n.vx*S+20,y=n.vy*S+22;
+  g.fillStyle="rgba(0,0,0,.18)";g.beginPath();g.ellipse(x,y+14,12,4,0,0,7);g.fill();
+  person(n.L,x,y+2);
+  if(!n.ok){g.fillStyle="#f2a33a";g.beginPath();g.arc(x,y-38+Math.sin(t/250+n.x)*2,8,0,7);g.fill();g.fillStyle="#1c2a2e";g.font="bold 12px Rubik,sans-serif";g.fillText("!",x,y-37+Math.sin(t/250+n.x)*2)}
+ });
+ st.foes.forEach(f=>{
+  lerp(f);const x=f.vx*S+20,y=f.vy*S+20;
+  const w=Math.sin(t/180+f.x)*1.5;g.fillStyle="#7b4fb3";g.beginPath();g.ellipse(x,y-2,16+w,13,0,0,7);g.fill();g.beginPath();g.moveTo(x-9,y+6);g.lineTo(x-14,y+17);g.lineTo(x+1,y+10);g.fill();g.fillStyle="#fff";g.beginPath();g.arc(x-6,y-4,4,0,7);g.arc(x+6,y-4,4,0,7);g.fill();
+  g.fillStyle="#1c1330";g.beginPath();g.arc(x-5,y-3,1.8,0,7);g.arc(x+7,y-3,1.8,0,7);g.fill();g.strokeStyle="#1c1330";g.lineWidth=2;g.beginPath();g.moveTo(x-10,y-10);g.lineTo(x-2,y-7);g.moveTo(x+10,y-10);g.lineTo(x+2,y-7);g.moveTo(x-5,y+3);g.lineTo(x-2,y+1);g.lineTo(x+1,y+3);g.lineTo(x+4,y+1);g.lineTo(x+7,y+3);g.stroke();g.lineWidth=1;g.fillStyle="#d8c3f5";g.font="bold 13px Rubik,sans-serif";g.fillText("?",x+14,y-16);
+ });
+ drawFx(t);lerp(st);
+ if(st.mode!=="intro"&&!(performance.now()<st.inv&&Math.floor(t/90)%2)){
+  const x=st.vx*S+20,y=st.vy*S+24;
+  g.fillStyle="rgba(0,0,0,.18)";g.beginPath();g.ellipse(x,y+15,12,4,0,0,7);g.fill();g.fillStyle="#2f4a73";g.fillRect(x-8,y+7,7,9);g.fillRect(x+1,y+7,7,9);g.fillStyle="#d6213a";g.beginPath();g.ellipse(x,y+2,11,11,0,0,7);g.fill();g.fillRect(x-14,y-2,5,12);g.fillRect(x+9,y-2,5,12);g.fillStyle="#f1c9a0";g.fillRect(x-14,y+8,5,4);g.fillRect(x+9,y+8,5,4);g.fillStyle="#fff";g.fillRect(x+9,y+3,5,4);
+  g.fillStyle="#f1c9a0";g.beginPath();g.arc(x,y-11,9,0,7);g.fill();g.fillStyle="#5a3a22";g.beginPath();g.arc(x,y-13,9,Math.PI,0);g.fill();g.fillStyle="#1c2a2e";g.beginPath();g.arc(x-3.5,y-10,1.3,0,7);g.arc(x+3.5,y-10,1.3,0,7);g.fill();g.strokeStyle="#9a4a3a";g.lineWidth=1.2;g.beginPath();g.arc(x,y-8,3,.2,2.9);g.stroke();g.lineWidth=1;g.fillStyle="#fff";g.beginPath();g.moveTo(x,y-1);g.quadraticCurveTo(x+5,y+5,x,y+8);g.quadraticCurveTo(x-5,y+5,x,y-1);g.fill();
+ }
+ requestAnimationFrame(draw);
+}
+const fsb=$("#fs"),de=document.documentElement;
+if(!de.requestFullscreen&&!de.webkitRequestFullscreen)fsb.hidden=true;
+fsb.onclick=()=>{const d=document;if(d.fullscreenElement||d.webkitFullscreenElement)(d.exitFullscreen||d.webkitExitFullscreen).call(d);else(de.requestFullscreen||de.webkitRequestFullscreen).call(de)};
+$("#snd").onclick=e=>{muted=!muted;if(master)master.gain.value=muted?0:1;e.target.textContent=muted?"🔇 Звук":"🔊 Звук"};
+intro();requestAnimationFrame(draw);
+</script>
+</body>
+</html>
